@@ -1,12 +1,36 @@
 ; Sets the origin to 0x7c00 as this is where the BIOS loads the bootloader
-ORG 0x7c00
+ORG 0
 
 ; Specifies that this is a 16-bit architecture, meaning data comes in 16 bits
 BITS 16
 
 ; For more information on interrupts, visit http://www.ctyme.com/rbrown.htm
+; For more information on FAT BIOS Param Block specs, visit https://wiki.osdev.org/FAT
+
+_start:
+    jmp short start
+    nop
+
+times 33 db 0 ; BIOS Parameter Block outside of the first 3 short jump NOP
 
 start:
+    jmp 0x7c0:step2 ; Changes the code segment to 0x7c0
+
+step2:
+    cli ; Clear Interrupts
+
+    mov ax, 0x7c0 ; To modify the data segment register, ax must be set
+
+    ; Sets the data segment to the location where the BIOS loads the bootloader
+    ; lodsb indexes data with the data segment and offsets with the si register
+    mov ds, ax
+    mov es, ax
+    mov ax, 0x00
+    mov ss, ax
+    mov sp, 0x7c00
+
+    sti ; Enables Interrupts
+
     mov si, message
     call print
 

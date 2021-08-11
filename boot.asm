@@ -13,6 +13,20 @@ _start:
 
 times 33 db 0 ; BIOS Parameter Block outside of the first 3 short jump NOP
 
+handle_zero:
+    mov ah, 0eh
+    mov al, 'A'
+    mov bx, 0x00
+    int 0x10
+    iret
+
+handle_one:
+    mov ah, 0eh
+    mov al, 'V'
+    mov bx, 0x00
+    int 0x10
+    iret
+
 start:
     jmp 0x7c0:step2 ; Changes the code segment to 0x7c0
 
@@ -30,6 +44,15 @@ step2:
     mov sp, 0x7c00
 
     sti ; Enables Interrupts
+
+    ; Interrupt 0 is stored at 0x00 in RAM, so I'm storing the interrupt
+    ; handler in the stack segment, which is set to 0x00, so that when
+    ; int 0 is invoked, it calls my interrupt handler
+    mov word[ss:0x00], handle_zero ; If the stack segment isn't used, will use the data segment instead
+    mov word[ss:0x02], 0x7c0 ; Specifies the segment of the interrupt
+
+    mov word[ss:0x04], handle_one ; Adds another entry to the Interrupt Vector Table
+    mov word[ss:0x06], 0x7c0 ; Specifies the segment of the interrupt
 
     mov si, message
     call print

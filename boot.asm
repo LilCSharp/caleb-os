@@ -13,20 +13,6 @@ _start:
 
 times 33 db 0 ; BIOS Parameter Block outside of the first 3 short jump NOP
 
-handle_zero:
-    mov ah, 0eh
-    mov al, 'A'
-    mov bx, 0x00
-    int 0x10
-    iret
-
-handle_one:
-    mov ah, 0eh
-    mov al, 'V'
-    mov bx, 0x00
-    int 0x10
-    iret
-
 start:
     jmp 0x7c0:step2 ; Changes the code segment to 0x7c0
 
@@ -45,17 +31,24 @@ step2:
 
     sti ; Enables Interrupts
 
-    ; Interrupt 0 is stored at 0x00 in RAM, so I'm storing the interrupt
-    ; handler in the stack segment, which is set to 0x00, so that when
-    ; int 0 is invoked, it calls my interrupt handler
-    mov word[ss:0x00], handle_zero ; If the stack segment isn't used, will use the data segment instead
-    mov word[ss:0x02], 0x7c0 ; Specifies the segment of the interrupt
+    mov ah, 2 ; Command for reading sector for CHS
+    mov al, 1 ; One sector to read
+    mov ch, 0 ; Cylinder low 8 bits
+    mov cl, 2 ; Read sector 2
+    mov dh, 0 ; Head number
+    mov bx, buffer
+    int 0x13 ; Interrupt that invokes the read command
+    jc error
 
-    mov word[ss:0x04], handle_one ; Adds another entry to the Interrupt Vector Table
-    mov word[ss:0x06], 0x7c0 ; Specifies the segment of the interrupt
-
-    mov si, message
+    mov si, buffer
     call print
+
+    jmp $
+
+error:
+    mov si, error_message
+    call print
+    jmp $
 
     ; Has the bootloader jump to itself so that it doesn't execute its own
     ; signature.
@@ -91,9 +84,7 @@ print_char:
 
     ret
 
-; Routine that creates bytes containing the specified string below. Terminates
-; with the null byte
-message: db 'Hello World!', 0
+error_message: db 'Failed to load sector', 0
 
 ; Says that at least 510 bytes need to be used.
 ; If less than 510 bytes is filled, the rest is padded with 0's
@@ -103,3 +94,5 @@ times 510- ($ - $$) db 0
 ; Since Intel Architectures are Little Endian, the reading order
 ; is reversed. This code loads the signature into the file.
 dw 0xAA55
+
+buffer:

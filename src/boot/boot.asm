@@ -81,6 +81,12 @@ load32:
     mov ss, ax
     mov ebp, 0x00200000
     mov esp, ebp
+
+    ; Enables the A20 Line
+    in al, 0x92
+    or al, 2
+    out 0x92, al
+
     jmp $
 
 ; Says that at least 510 bytes need to be used.
